@@ -42,7 +42,7 @@ class JsonMapPredicateTest(unittest.TestCase):
     JsonSnapshotHelper.AssertExpectedValue(expect, have, msg)
 
   def _try_map(self, context, pred, obj, expect_ok, expect_map_result=None,
-               dump=False, min=1):
+               copy_pruned=False, dump=False, min=1):
     """Helper function for invoking finder and asserting the result.
 
     Args:
@@ -52,11 +52,17 @@ class JsonMapPredicateTest(unittest.TestCase):
       expect_map_result: If not None, then the expected
           jp.MapPredicateResult from apply().
       dump: If True then print the filter_result to facilitate debugging.
+      copy_pruned
     """
     map_result = jp.MapPredicate(pred, min=min)(context, obj)
     if dump:
       print 'MAP_RESULT:\n{0}\n'.format(
           JsonSnapshotHelper.ValueToEncodedJson(map_result))
+    if copy_pruned:
+      map_result = map_result.copy_pruned()
+      if dump:
+        print 'PRUNED_RESULT:\n{0}\n'.format(
+            JsonSnapshotHelper.ValueToEncodedJson(map_result))
 
     if expect_map_result:
       self.assertEqual(expect_map_result, map_result)
@@ -77,7 +83,8 @@ class JsonMapPredicateTest(unittest.TestCase):
         good_map=[aA_attempt],
         bad_map=[])
 
-    self._try_map(context, aA, _LETTER_DICT, True, expect_result)
+    self._try_map(context, aA, _LETTER_DICT, True,
+                  expect_map_result=expect_result)
 
   def test_map_predicate_bad(self):
     context = ExecutionContext()
@@ -90,7 +97,8 @@ class JsonMapPredicateTest(unittest.TestCase):
                                            aA(context, _NUMBER_DICT))],
         good_map=[])
 
-    self._try_map(context, aA, _NUMBER_DICT, False, expect_result)
+    self._try_map(context, aA, _NUMBER_DICT, False,
+                  expect_map_result=expect_result)
 
   def test_map_predicate_good_and_bad_min_1(self):
     context = ExecutionContext()
@@ -108,7 +116,7 @@ class JsonMapPredicateTest(unittest.TestCase):
         bad_map=[aa_number_attempt])
 
     self._try_map(context, aA, [_NUMBER_DICT, _LETTER_DICT],
-                  True, expect_result)
+                  True, expect_map_result=expect_result)
 
   def test_map_predicate_good_and_bad_min_2(self):
     context = ExecutionContext()
@@ -124,7 +132,8 @@ class JsonMapPredicateTest(unittest.TestCase):
                                            aA(context, _NUMBER_DICT))])
 
     self._try_map(
-        context, aA, [_NUMBER_DICT, _LETTER_DICT], False, expect_result, min=2)
+        context, aA, [_NUMBER_DICT, _LETTER_DICT], False,
+        expect_map_result=expect_result, min=2)
 
   def test_map_predicate_good_and_bad_min_indirect(self):
     context = ExecutionContext(min=2)
@@ -140,7 +149,8 @@ class JsonMapPredicateTest(unittest.TestCase):
                                            aA(context, _NUMBER_DICT))])
 
     self._try_map(
-        context, aA, [_NUMBER_DICT, _LETTER_DICT], False, expect_result,
+        context, aA, [_NUMBER_DICT, _LETTER_DICT], False,
+        expect_map_result=expect_result,
         min=lambda x: x['min'])
 
   def test_map_not_found(self):
@@ -155,7 +165,8 @@ class JsonMapPredicateTest(unittest.TestCase):
         bad_map=[aa_composite_attempt],
         good_map=[])
 
-    self._try_map(context, aA, _COMPOSITE_DICT, False, expect_result)
+    self._try_map(context, aA, _COMPOSITE_DICT, False,
+                  expect_map_result=expect_result)
 
   def test_object_filter_cases(self):
     context = ExecutionContext()
@@ -176,6 +187,26 @@ class JsonMapPredicateTest(unittest.TestCase):
     self._try_map(context, AandB, _MULTI_ARRAY, True)
     self._try_map(context, AandB, _MIXED_DICT, False)
 
+  def test_prune_good(self):
+    context = ExecutionContext()
+    aA = jp.PathPredicate('a', jp.STR_EQ('A'))
+
+    aa_number_attempt = jp.ObjectResultMapAttempt(_NUMBER_DICT,
+                                                  aA(context, _NUMBER_DICT))
+    aa_letter_attempt = jp.ObjectResultMapAttempt(_LETTER_DICT,
+                                                  aA(context, _LETTER_DICT))
+    expect_result = jp.MapPredicateResult(
+        valid=True, pred=aA,
+        obj_list=[_NUMBER_DICT, _LETTER_DICT],
+        all_results=[
+            jp.PredicateResult(False, comment='Pruned Details'),
+            aa_letter_attempt.result],
+        bad_map=[],
+        good_map=[aa_letter_attempt])
+
+    self._try_map(context, aA, [_NUMBER_DICT, _LETTER_DICT], True,
+                  copy_pruned=True,
+                  expect_map_result=expect_result)
 
   def test_none_bad(self):
     context = ExecutionContext()

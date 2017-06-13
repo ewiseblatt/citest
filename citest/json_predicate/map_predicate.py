@@ -117,6 +117,21 @@ class MapPredicateResult(SequencedPredicateResult):
                  summary=attempt.summary)
     return attempt_entity
 
+  def copy_pruned(self, **kwargs):
+    """Implements PredicateResult interface."""
+    dup = super(MapPredicateResult, self).copy_pruned(
+      with_placeholders=True, **kwargs)
+    if dup.valid:
+      dup.__bad_map = []
+
+    # Clean up the good map for the good entries
+    dup.__good_map = []
+    for index, result in enumerate(dup.results):
+      if result:
+        obj = self.__obj_list[index]
+        dup.__good_map.append(ObjectResultMapAttempt(obj, result))
+    return dup
+
   def export_to_json_snapshot(self, snapshot, entity):
     """Implements JsonSnapshotableEntity interface."""
     func = lambda l: [self.__map_attempt_to_entity(e, snapshot) for e in l]

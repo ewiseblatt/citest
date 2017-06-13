@@ -15,7 +15,12 @@
 
 """Specifies test cases using BaseAgents."""
 
+import os
 from ..base import JsonSnapshotableEntity
+
+
+DEFAULT_PRUNE_OPERATION_CONTRACT_ON_SUCCESS=os.environ.get(
+    'CITEST_PRUNE_OPERATION_CONTRACT_ON_SUCCESS', False)
 
 
 class OperationContract(JsonSnapshotableEntity):
@@ -37,6 +42,17 @@ class OperationContract(JsonSnapshotableEntity):
   def contract(self):
     """The json.Contract to verify the operation."""
     return self.__contract
+
+  @property
+  def prune_snapshot_on_success(self):
+    """Governs how this test (and executiosn of it) should be snapsshotted.
+
+    If True then only include the proof of success, if in fact it succeeds.
+    This can eliminate a substantial amount of superfluous data making
+    reports more concise when success is typically not that interesting
+    to consider further.
+    """
+    return self.__prune_snapshot_on_success
 
   @property
   def status_extractor(self):
@@ -75,7 +91,8 @@ class OperationContract(JsonSnapshotableEntity):
     snapshot.edge_builder.make(entity, 'Contract', self.__contract)
 
   def __init__(self, operation, contract,
-               status_extractor=None, cleanup=None):
+               status_extractor=None, cleanup=None,
+               prune_snapshot_on_success=None):
     """Construct instance.
 
     Args:
@@ -85,8 +102,20 @@ class OperationContract(JsonSnapshotableEntity):
          See the status_extractor property for more information.
       cleanup: [Callable(ExecutionContext)]
          Perform any post-test cleanup.
+      prune_snapshot_on_success: [bool] If True then attempt to remove
+         superfluous failures and retry detail when journaling them.
+         This includes removing justifications of why paths through the
+         result were rejected as long as the overall predicate succeeded
+         under the assumption there is no reason to consider them. This
+         could reduce the size of the reporting analysis substantially,
+         making it more concise.
+
+         if None then use DEFAULT_PRUNE_OPERATION_CONTRACT_ON_SUCCESS
     """
+    if prune_snapshot_on_success is None:
+      prune_snapshot_on_success = DEFAULT_PRUNE_OPERATION_CONTRACT_ON_SUCCESS
     self.__operation = operation
     self.__contract = contract
     self.__status_extractor = status_extractor
     self.__cleanup = cleanup
+    self.__prune_snapshot_on_success = prune_snapshot_on_success

@@ -68,6 +68,15 @@ class CardinalityResult(predicate.PredicateResult, HasPathPredicateResult):
     """The source value (collection) that we are mapping the predicateover."""
     return self.__collect_values_result.source
 
+  def copy_pruned(self, **kwargs):
+    """Implements ValuePredicateResult interface."""
+    dup = super(CardinalityResult, self).copy_pruned(**kwargs)
+    if not dup.is_valid:
+      return dup
+    dup.__collect_values_result = (
+        dup.__collect_values_result.copy_pruned(**kwargs))
+    return dup
+
   def __init__(self, cardinality_pred, path_pred_result, **kwargs):
     """Constructor.
 

@@ -33,6 +33,7 @@ but can be changed with --log_filename and --log_dir.
 # Standard python modules.
 from multiprocessing.pool import ThreadPool
 import argparse
+import copy
 import logging
 import os
 import time
@@ -117,6 +118,16 @@ class OperationContractExecutionAttempt(JsonSnapshotableEntity):
     self.__stop = time.time()
     self.__status = status
     self.__status_summary = summary
+
+  def copy_with_pruned_verification(self):
+    """Return a copy of this attempt to have a more concise verification."""
+    if self.__verification or self.__verification is None:
+      return self
+    if not hasattr(self.__verification, 'copy_pruned'):
+      return self
+    dup = copy.copy(self)
+    dup.__verification = dup.__verification.copy_pruned()
+    return dup
 
   def export_to_json_snapshot(self, snapshot, entity):
     """Implements JsonSnapshotableEntity interface."""
@@ -212,8 +223,18 @@ class OperationContractExecutionTrace(JsonSnapshotableEntity):
       builder.make_error(entity, 'Exception', self.__exception, format='pre')
 
     if self.__attempts:
-      edge = builder.make(entity, 'Attempts', list(reversed(self.__attempts)))
-      final_relation = self.__attempts[-1].default_relation
+      pruned_attempts = self.__attempts
+      attempts_metadata = {}
+      if self.__test_case.prune_snapshot_on_success and pruned_attempts[-1]:
+        # Just keep the first and last
+        attempts_metadata['num_pruned_attempts'] = len(pruned_attempts) - 2
+        pruned_attempts = [pruned_attempts[0]]
+        pruned_attempts.append(
+            pruned_attempts[1].copy_with_pruned_verification())
+      edge = builder.make(entity,
+                          'Attempts', list(reversed(pruned_attempts)),
+                          **attempts_metadata)
+      final_relation = pruned_attempts[-1].default_relation
       if final_relation is not None:
         edge.add_metadata('relation', final_relation)
         entity.add_metadata('_default_relation', final_relation)

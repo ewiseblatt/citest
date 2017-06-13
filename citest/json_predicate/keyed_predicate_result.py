@@ -47,6 +47,18 @@ class KeyedPredicateResult(PredicateResult, CloneableWithNewSource):
     """The map of PredicateResult instances."""
     return self.__results
 
+  def copy_pruned(self):
+    """Implements ValuePredicateResult interface."""
+    dup = super(KeyedPredicateResult, self).copy_pruned(**kwargs)
+    if not dup.is_valid:
+      return dup
+
+    dup_results = dup.__results
+    dup.__results = {}
+    for key, value in dup_results.items():
+      dup.__results[key] = value.clone_pruned()
+    return dup
+
   def export_to_json_snapshot(self, snapshot, entity):
     builder = snapshot.edge_builder
     summary = builder.object_count_to_summary(

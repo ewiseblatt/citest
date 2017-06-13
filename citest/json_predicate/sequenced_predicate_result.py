@@ -14,6 +14,8 @@
 
 """Aggregates a list of predicate results into a single response."""
 
+import copy
+
 from .predicate import (
     CloneableWithNewSource,
     PredicateResult)
@@ -46,12 +48,35 @@ class SequencedPredicateResult(PredicateResult, CloneableWithNewSource):
     """The list of PredicateResult instances."""
     return self.__results
 
+  def copy_pruned(self, with_placeholders=True):
+    """Implements PredicateResult interface.
+    """
+    dup = super(SequencedPredicateResult, self).copy_pruned()
+    dup = copy.copy(dup)
+    dup.__results = []
+    keep_invalid = not self.valid
+    for result in self.results:
+      if result:
+        dup.__results.append(result.copy_pruned())
+      elif keep_invalid:
+        dup.__results.append(result)
+      elif with_placeholders:
+        dup.__results.append(
+            PredicateResult(False, comment='Pruned Details'))
+      else:
+        dup.__num_pruned_results += 1
+    return dup
+
   def export_to_json_snapshot(self, snapshot, entity):
+    """Implements JsonSnapshotableEntity interface."""
     builder = snapshot.edge_builder
     summary = builder.object_count_to_summary(
         self.__results, subject='sequenced composite result')
     builder.make_mechanism(entity, 'Predicate', self.__pred)
     builder.make(entity, '#', len(self.__results))
+    if self.__num_pruned_results:
+      builder.make(
+          entity, '# Pruned Failures', self.__num_pruned_results)
 
     result_entity = snapshot.new_entity(summary=summary)
     for index, result in enumerate(self.__results):
@@ -73,6 +98,7 @@ class SequencedPredicateResult(PredicateResult, CloneableWithNewSource):
     super(SequencedPredicateResult, self).__init__(valid, **kwargs)
     self.__pred = pred
     self.__results = results
+    self.__num_pruned_results = 0
 
   def __eq__(self, result):
     return (super(SequencedPredicateResult, self).__eq__(result)

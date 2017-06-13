@@ -16,6 +16,7 @@
 """Support for verifying Observations are consistent with constraints."""
 
 
+import copy
 import logging
 
 from ..base import JsonSnapshotableEntity
@@ -192,7 +193,26 @@ class ObservationVerifyResult(predicate.PredicateResult):
     self.__good_results = good_results
     self.__bad_results = bad_results
     self.__failed_constraints = failed_constraints
+    self.__num_pruned_bad_results = 0
     super(ObservationVerifyResult, self).__init__(valid, **kwargs)
+
+  def copy_pruned(self):
+    """Make a copy of this result but without "unexpected" failures.
+
+    This means that as long as the verification succeeded overall,
+    do not include superfluous failure reporting.
+    """
+    dup = copy.copy(self)
+    dup.__good_results = []
+    for result in self.__good_results:
+      if hasattr(result, 'copy_pruned'):
+        dup.__good_results.append(result.copy_pruned())
+      else:
+        dup.__good_results.append(result)
+    if not dup.valid:
+      return dup
+    dup.__num_pruned_bad_results = len(dup.__bad_results)
+    dup.__bad_results = []
 
   def export_to_json_snapshot(self, snapshot, entity):
     """Implements JsonSnapshotableEntity interface."""
@@ -210,6 +230,10 @@ class ObservationVerifyResult(predicate.PredicateResult):
       edge = builder.make(entity, 'Bad Results', self.__bad_results)
       if self.__bad_results:
         edge.add_metadata('relation', 'INVALID')
+    if self.__num_pruned_bad_results:
+      edge = builder.make(entity, 'Bad Results Dropped',
+                          self.__num_pruned_bad_results,
+                          relation='INVALID')
 
   def __str__(self):
     return '{0} Observed {1} good and {2} bad with {3} failed constraints.'.format(

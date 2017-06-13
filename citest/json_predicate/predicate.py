@@ -85,6 +85,19 @@ class PredicateResult(JsonSnapshotableEntity):
     """Whether or not the result should be considered 'successful'."""
     return self.__valid
 
+  def copy_pruned(self, **kwargs):
+    """Return a copy of this value, but with superfluous details pruned.
+
+    This is intended for specialized results to override and remove extra
+    details when asked to. Extra details are typically analysis details
+    for a successful result that did not lead to concluding it was successful
+    (e.g additional list elements that were not what we were looking for).
+    """
+    if kwargs:
+      raise TypeError('Unexpected arguments {0!r}',
+                      format(kwargs.keys()))
+    return self
+
   def export_to_json_snapshot(self, snapshot, entity):
     """Implements JsonSnapshotableEntity interface."""
     builder = snapshot.edge_builder

@@ -66,7 +66,9 @@ from http_scrubber import (
     HttpScrubber)
 
 # The operation_contract module combines AgentOperation and JsonContract.
-from operation_contract import OperationContract
+from operation_contract import (
+    DEFAULT_PRUNE_OPERATION_CONTRACT_ON_SUCCESS
+    OperationContract)
 
 # A NoOpOperation can be used to create a contract for an invariant.
 from nop_operation import NoOpOperation
