@@ -82,8 +82,11 @@ class JournalLogger(logging.Logger):
     journal = get_global_journal()
     if journal is not None:
       journal.store(_obj)
+
     logger = _logger or logging.getLogger(__name__)
-    logger.log(levelno, repr(_obj), extra={'citest_journal': kwargs})
+    copy_kwargs = dict(kwargs)
+    copy_kwargs['nojournal'] = True
+    logger.log(levelno, str(_obj), extra={'citest_journal': copy_kwargs})
 
   @staticmethod
   def journal_or_log(_msg, levelno=logging.DEBUG, _logger=None, **kwargs):
