@@ -207,6 +207,8 @@ class HttpOperationStatus(base_agent.AgentOperationStatus):
     self.__snapshot_format = None
 
   def __cmp__(self, response):
+    if self.__http_response is None:
+      return response.raw_http_response is None
     return self.__http_response.__cmp__(response.raw_http_response)
 
   def __str__(self):
@@ -225,14 +227,19 @@ class HttpOperationStatus(base_agent.AgentOperationStatus):
 
   def export_to_json_snapshot(self, snapshot, entity):
     super(HttpOperationStatus, self).export_to_json_snapshot(snapshot, entity)
-    self.__http_response.export_to_json_snapshot(
+    if self.__http_response:
+      self.__http_response.export_to_json_snapshot(
         snapshot, entity, format=self.__snapshot_format)
+    else:
+      snapshot.edge_builder.make_data(entity, 'Http Response:', 'None')
 
   def export_summary_to_json_snapshot(self, snapshot, entity):
     super(HttpOperationStatus, self).export_summary_to_json_snapshot(
         snapshot, entity)
-    self.__http_response.export_summary_to_json_snapshot(snapshot, entity)
-
+    if self.__http_response:
+      self.__http_response.export_summary_to_json_snapshot(snapshot, entity)
+    else:
+      snapshot.edge_builder.make_data(entity, 'Http Response:', 'None')
 
 class SynchronousHttpOperationStatus(HttpOperationStatus):
   """An HttpOperationStatus for a synchronous request.
