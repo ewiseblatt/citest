@@ -72,6 +72,7 @@ import collections
 import datetime
 import httplib
 import json
+import logging
 import pickle
 import re
 import time
@@ -709,4 +710,5 @@ class Main(object):
 
 
 if __name__ == '__main__':
+  logging.basicConfig(filename='resource_snapshot.log', level=logging.DEBUG)
   exit(Main.main())

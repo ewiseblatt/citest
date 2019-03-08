@@ -174,15 +174,17 @@ class DumpRenderer(JournalProcessor):
   def render_context_control(self, control):
     """Render a context control entry."""
     direction = control['control']
+    meta = ''
     if direction == 'BEGIN':
       title = control.get('_title')
     else:
       original = self.__context_stack[-1]
       title = original.get('_title')
+      meta = '  (relation=%r)' % control.get('relation')
       self.__context_stack.pop()
 
-    self.emit('CONTEXT {direction} {title}',
-              direction=direction, title=title)
+    self.emit('CONTEXT {direction} {title}{meta}',
+              direction=direction, title=title, meta=meta)
 
     if direction == 'BEGIN':
       self.__context_stack.append(control)
